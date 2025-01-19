@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "../store";
 import { useFormik } from "formik";
-import * as Yup from "yup";
 import {
   Box,
   Button,
@@ -9,39 +10,29 @@ import {
   Typography,
   CircularProgress,
 } from "@mui/material";
-import { useTransactionMutations } from "../hooks/useTransactionMutations";
-import { useCategories } from "../hooks/useCategories";
-import { useAccountTypes } from "../hooks/useAccountTypes";
-
-// Validation Schema
-const formSchema = Yup.object().shape({
-  amount: Yup.string()
-    .required("Amount is required")
-    .matches(/^\d+(\.\d{1,2})?$/, "Enter a valid amount (e.g., 10.00)"),
-  type: Yup.string()
-    .oneOf(["income", "expense"], "Type must be either 'income' or 'expense'")
-    .required("Type is required"),
-  category_id: Yup.number().required("Category is required"),
-  account_type_id: Yup.number().required("Account type is required"),
-  description: Yup.string()
-    .max(250, "Description should not exceed 250 characters")
-    .optional(),
-});
+import apis from "../store/api";
+import addTransactionValidation from "../utils/add-transaction-validation";
 
 const AddTransactionForm = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const dispatch = useDispatch<AppDispatch>();
   const {
-    categories,
-    isLoading: categoriesLoading,
+    data: categories,
+    loading: categoriesLoading,
     error: categoriesError,
-  } = useCategories();
-  const {
-    accountTypes,
-    isLoading: accountTypesLoading,
-    error: accountTypesError,
-  } = useAccountTypes();
-  const { addTransaction, error: submitError } = useTransactionMutations();
+    message,
+  } = useSelector((state: RootState) => state.categories);
 
+  const {
+    data: accountTypes,
+    loading: accountTypesLoading,
+    error: accountTypesError,
+    message: accountTypesMessage,
+  } = useSelector((state: RootState) => state.accountTypes);
+
+  const {
+    addTransactionStatus: { error: submitError ,message: submitMessage },
+  } = useSelector((state: RootState) => state.transactions);
 
   const formik = useFormik({
     initialValues: {
@@ -51,22 +42,20 @@ const AddTransactionForm = () => {
       account_type_id: "",
       description: "",
     },
-    validationSchema: formSchema,
+    validationSchema: addTransactionValidation,
     onSubmit: async (values, { resetForm }) => {
+      console.log("Form values:", values);
       setIsLoading(true);
       try {
-        // Find the selected account type
-
-        console.log(JSON.stringify(values, null, 2) + "  =====> values");
-        await addTransaction({
-          amount: values.amount,
-          type: values.type as 'income' | 'expense',
-          category_id: Number(values.category_id),
-       
-          account_id: Number(values.account_type_id),
-          description: values.description,
-        
-        });
+        await dispatch(
+          apis.addTransaction({
+            amount: values.amount,
+            type: values.type as "income" | "expense",
+            category_id: Number(values.category_id),
+            account_id: Number(values.account_type_id),
+            description: values.description,
+          })
+        );
         resetForm();
       } catch (error) {
         console.error("Error submitting form:", error);
@@ -92,8 +81,8 @@ const AddTransactionForm = () => {
   if (categoriesError || accountTypesError) {
     return (
       <Box sx={{ color: "error.main", textAlign: "center", mt: 4 }}>
-        Error loading form data:{" "}
-        {categoriesError?.message || accountTypesError?.message}
+        Error loading form data:
+        {accountTypesMessage || message}
       </Box>
     );
   }
@@ -124,7 +113,7 @@ const AddTransactionForm = () => {
 
       {submitError && (
         <Typography color="error" sx={{ mb: 2 }}>
-          {submitError.message}
+          {submitMessage}
         </Typography>
       )}
 
@@ -218,6 +207,7 @@ const AddTransactionForm = () => {
         variant="contained"
         fullWidth
         disabled={isLoading || categoriesLoading || accountTypesLoading}
+       
         sx={{
           textTransform: "none",
           fontFamily: "Rubik, sans-serif",

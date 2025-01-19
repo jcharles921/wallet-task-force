@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import {
   Box,
   TextField,
@@ -17,28 +18,33 @@ import {
 } from "@mui/material";
 import { CustomButton } from "../../containers/Buttons";
 import { Delete, Edit } from "@mui/icons-material";
-import ClearOutlinedIcon from "@mui/icons-material/ClearOutlined";
+import { RootState, AppDispatch } from "../../store";
+import apis from "../../store/api";
+import Loader from "../../containers/Loader";
+import styles from "../../styles/global.module.css";
+
+interface Category {
+  id: number;
+  name: string;
+  parent_id: number | null;
+}
 
 const Categories = () => {
-  const [categories, setCategories] = useState([
-    {
-      name: "Food",
-      subcategories: ["Groceries", "Dining Out"],
-    },
-    {
-      name: "Transportation",
-      subcategories: ["Gas", "Public Transit"],
-    },
-    {
-      name: "Housing",
-      subcategories: ["Rent", "Utilities"],
-    },
-    {
-      name: "Entertainment",
-      subcategories: ["Movies", "Concerts"],
-    },
-  ]);
+  const dispatch = useDispatch<AppDispatch>();
 
+  // Redux state
+  const categories = useSelector(
+    (state: RootState) => state.categories.data as Category[]
+  );
+  const loading = useSelector((state: RootState) => state.categories.loading);
+  const addCategoryStatus = useSelector(
+    (state: RootState) => state.addCategory
+  );
+  const deleteCategoryStatus = useSelector(
+    (state: RootState) => state.deleteCategory
+  );
+
+  // Local state
   const [categoryName, setCategoryName] = useState("");
   const [parentCategory, setParentCategory] = useState("");
   const [editSubcategory, setEditSubcategory] = useState({
@@ -47,83 +53,88 @@ const Categories = () => {
     subcategory: "",
   });
   const [newSubcategoryName, setNewSubcategoryName] = useState("");
+  const [deleteDialog, setDeleteDialog] = useState({ open: false, id: null });
+
+  // Fetch categories on component mount
+  useEffect(() => {
+    dispatch(apis.categories());
+  }, [dispatch]);
+
+  // Refresh categories list when add/delete operations complete
+  useEffect(() => {
+    if (addCategoryStatus.success || deleteCategoryStatus.success) {
+      dispatch(apis.categories());
+
+      // Reset status
+      if (addCategoryStatus.success) {
+        dispatch(apis.resetAll());
+      }
+      // if (deleteCategoryStatus.success) {
+      //   dispatch(deleteCategorySlice.actions.resetDeleteCategoryStatus());
+      // }
+    }
+  }, [addCategoryStatus.success, deleteCategoryStatus.success, dispatch]);
 
   const handleAddCategory = () => {
     if (!categoryName) return;
 
-    if (parentCategory) {
-      setCategories((prev) =>
-        prev.map((cat) => {
-          if (cat.name === parentCategory) {
-            return {
-              ...cat,
-              subcategories: [...cat.subcategories, categoryName],
-            };
-          }
-          return cat;
-        })
-      );
-    } else {
-      setCategories((prev) => [
-        ...prev,
-        { name: categoryName, subcategories: [] },
-      ]);
-    }
+    const newCategory = {
+      name: categoryName,
+      parent_id: parentCategory ? Number(parentCategory) : null,
+    };
 
+    dispatch(apis.addCategory(newCategory));
     setCategoryName("");
     setParentCategory("");
-  };
-
-  const handleDeleteCategory = (
-    categoryNameToDelete: string,
-    subcategory: string | null = null
-  ) => {
-    if (subcategory) {
-      setCategories((prev) =>
-        prev.map((cat) => {
-          if (cat.name === categoryNameToDelete) {
-            return {
-              ...cat,
-              subcategories: cat.subcategories.filter(
-                (sub) => sub !== subcategory
-              ),
-            };
-          }
-          return cat;
-        })
-      );
-    } else {
-      setCategories((prev) =>
-        prev.filter((cat) => cat.name !== categoryNameToDelete)
-      );
-    }
   };
 
   const handleEditSubcategory = (category: any, subcategory: any) => {
     setEditSubcategory({ open: true, category, subcategory });
     setNewSubcategoryName(subcategory);
   };
+  const organizeCategories = (categories: Category[]) => {
+    const mainCategories = categories.filter((cat) => !cat.parent_id);
+    const subCategories = categories.filter((cat) => cat.parent_id);
 
-  //   const handleSaveSubcategory = () => {
-  //     setCategories((prev) =>
-  //       prev.map((cat) => {
-  //         if (cat.name === editSubcategory.category) {
-  //           return {
-  //             ...cat,
-  //             subcategories: cat.subcategories.map((sub) =>
-  //               sub === editSubcategory.subcategory ? newSubcategoryName : sub
-  //             ),
-  //           };
-  //         }
-  //         return cat;
-  //       })
-  //     );
-  //     setEditSubcategory({ open: false, category: "", subcategory: "" });
-  //     setNewSubcategoryName("");
-  //   };
+    return mainCategories.map((mainCat) => ({
+      ...mainCat,
+      subcategories: subCategories.filter(
+        (subCat) => subCat.parent_id === mainCat.id
+      ),
+    }));
+  };
+  const handleSaveEdit = () => {
+    if (!newSubcategoryName.trim()) return;
+
+    const updatedCategory = {
+      parent_id: Number(editSubcategory.category),
+      name: newSubcategoryName,
+    };
+
+    dispatch(apis.editCategory(updatedCategory));
+    setEditSubcategory({ open: false, category: "", subcategory: "" });
+  };
+  const confirmDeleteCategory = (categoryId: any) => {
+    setDeleteDialog({ open: true, id: categoryId });
+  };
+
+  const handleDeleteCategory = () => {
+    if (deleteDialog.id !== null) {
+      dispatch(apis.deleteCategory(deleteDialog.id));
+    }
+    setDeleteDialog({ open: false, id: null });
+  };
+
+  if (loading) {
+    return (
+      <div className="w-full flex justify-center">
+        <Loader size={40} color="#014e7a" />
+      </div>
+    );
+  }
 
   return (
-    <div className="flex gap-10 justify-center  ">
+    <div className="flex gap-10 justify-center pt-10">
       <div>
         <Typography
           variant="h6"
@@ -141,6 +152,8 @@ const Categories = () => {
           value={categoryName}
           onChange={(e) => setCategoryName(e.target.value)}
           margin="normal"
+          error={addCategoryStatus.error !== null}
+          helperText={addCategoryStatus.error}
         />
         <TextField
           select
@@ -152,7 +165,7 @@ const Categories = () => {
         >
           <MenuItem value="">None</MenuItem>
           {categories.map((category) => (
-            <MenuItem key={category.name} value={category.name}>
+            <MenuItem key={category.id} value={category.id}>
               {category.name}
             </MenuItem>
           ))}
@@ -163,13 +176,14 @@ const Categories = () => {
           customWidth={"100%"}
           sx={{ mt: 2 }}
           customHeight={"40px"}
+          disabled={addCategoryStatus.loading}
         >
-          Add Category
+          {addCategoryStatus.loading ? <Loader color="#fff" /> : "Add Category"}
         </CustomButton>
       </div>
 
       {/* Categories List */}
-      <div className=" w-auto flex flex-col  items-center justify-center pl-8">
+      <div className={styles.categoryList}>
         <Typography
           variant="h6"
           gutterBottom
@@ -180,10 +194,10 @@ const Categories = () => {
         >
           Categories
         </Typography>
-        <div className=" overflow-y-scroll  grid grid-cols-2 gap-4 max-h-[calc(100vh-160px)]">
-          {categories.map((category) => (
+        <div className={styles.categoryBox}>
+          {organizeCategories(categories).map((category) => (
             <Paper
-              key={category.name}
+              key={category.id}
               variant="outlined"
               sx={{ mb: 2, p: 2, width: "400px" }}
             >
@@ -195,59 +209,84 @@ const Categories = () => {
                 <Typography variant="subtitle1" fontWeight="bold">
                   {category.name}
                 </Typography>
-                <IconButton
-                  onClick={() => handleDeleteCategory(category.name)}
-                  color="primary"
-                >
-                  <ClearOutlinedIcon />
-                </IconButton>
-              </Box>
-              <List>
-                {category.subcategories.map((sub) => (
-                  <ListItem
-                    key={sub}
-                    secondaryAction={
-                      <>
-                        <IconButton
-                          onClick={() =>
-                            handleEditSubcategory(category.name, sub)
-                          }
-                          color="primary"
-                        >
-                          <Edit />
-                        </IconButton>
-                        <IconButton
-                          onClick={() =>
-                            handleDeleteCategory(category.name, sub)
-                          }
-                          color="error"
-                        >
-                          <Delete />
-                        </IconButton>
-                      </>
+                <Box>
+                  <IconButton
+                    onClick={() =>
+                      handleEditSubcategory(category.id, category.name)
                     }
+                    sx={{
+                      color: "#014e7a",
+                    }}
                   >
-                    <ListItemText primary={sub} />
-                  </ListItem>
-                ))}
-              </List>
+                    <Edit />
+                  </IconButton>
+                  <IconButton
+                    onClick={() => confirmDeleteCategory(category.id)}
+                    color="error"
+                  >
+                    {deleteCategoryStatus.loading &&
+                    deleteCategoryStatus.categoryId === category.id ? (
+                      <Loader size={20} color="red" />
+                    ) : (
+                      <Delete />
+                    )}
+                  </IconButton>
+                </Box>
+              </Box>
+              {category.subcategories?.length > 0 && (
+                <List>
+                  {category.subcategories.map((subCategory) => (
+                    <ListItem
+                      sx={{
+                        p: 0,
+                      }}
+                      key={subCategory.id}
+                    >
+                      <ListItemText primary={subCategory.name} sx={{ pl: 2 }} />
+                      <IconButton
+                        sx={{
+                          color: "#014e7a",
+                        }}
+                        onClick={() =>
+                          handleEditSubcategory(
+                            subCategory.id,
+                            subCategory.name
+                          )
+                        }
+                        color="primary"
+                      >
+                        <Edit />
+                      </IconButton>
+                      <IconButton
+                        onClick={() => confirmDeleteCategory(category.id)}
+                        color="error"
+                      >
+                        {deleteCategoryStatus.loading &&
+                        deleteCategoryStatus.categoryId === category.id ? (
+                          <Loader size={20} color="red" />
+                        ) : (
+                          <Delete />
+                        )}
+                      </IconButton>
+                    </ListItem>
+                  ))}
+                </List>
+              )}
             </Paper>
           ))}
         </div>
       </div>
-
-      {/* Edit Subcategory Dialog */}
       <Dialog
         open={editSubcategory.open}
         onClose={() =>
           setEditSubcategory({ open: false, category: "", subcategory: "" })
         }
       >
-        <DialogTitle>Edit Subcategory</DialogTitle>
+        <DialogTitle>Edit Category</DialogTitle>
         <DialogContent>
           <TextField
             fullWidth
-            label="Subcategory Name"
+            label="Category Name"
             value={newSubcategoryName}
             onChange={(e) => setNewSubcategoryName(e.target.value)}
             margin="normal"
@@ -261,7 +300,24 @@ const Categories = () => {
           >
             Cancel
           </Button>
-          <Button>Save</Button>
+          <Button onClick={handleSaveEdit}>Save</Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog
+        open={deleteDialog.open}
+        onClose={() => setDeleteDialog({ open: false, id: null })}
+      >
+        <DialogTitle>Confirm Delete</DialogTitle>
+        <DialogContent>
+          Are you sure you want to delete this category?
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialog({ open: false, id: null })}>
+            Cancel
+          </Button>
+          <Button onClick={handleDeleteCategory} color="error">
+            Delete
+          </Button>
         </DialogActions>
       </Dialog>
     </div>

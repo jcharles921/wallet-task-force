@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import styles from "../../styles/global.module.css";
 import { Table } from "../../containers/Tables";
 import AddTransactionForm from "../../components/AddTransactionForm";
@@ -6,48 +7,87 @@ import { GridColDef } from "@mui/x-data-grid";
 import Typography from "@mui/material/Typography";
 import CircularProgress from "@mui/material/CircularProgress";
 import Alert from "@mui/material/Alert";
-import { useTransactions } from "../../hooks/useTransactions";
+import IconButton from "@mui/material/IconButton";
+import DeleteIcon from "@mui/icons-material/Delete";
+import apis from "../../store/api";
+import { RootState, AppDispatch } from "../../store";
 
 const localTimeFormat = (date: Date | string): string =>
   new Date(date).toLocaleString();
-const columns: GridColDef[] = [
-  {
-    field: "date",
-    headerName: "Date",
-    width: 150,
-    renderCell: (params) => (
-      <Typography>{localTimeFormat(params.row.date)}</Typography>
-    ),
-  },
-  { field: "description", headerName: "Description", width: 200 },
-  { field: "category_name", headerName: "Category", width: 150 },
-  {
-    field: "amount",
-    headerName: "Amount",
-    width: 150,
-    align: "right",
-    headerAlign: "right",
-    renderCell: (params) => (
-      <Typography
-        sx={{
-          color: params.row.type === "expense" ? "error.main" : "success.main",
-        }}
-      >
-        ${Math.abs(parseFloat(params.value)).toFixed(2)}
-      </Typography>
-    ),
-  },
-];
 
 const Transactions = () => {
-  const { transactions, isLoading, error } = useTransactions();
+  const dispatch = useDispatch<AppDispatch>();
   const [selectedAccount, _] = useState<string>("All");
 
-  // const handleAccountChange = (event: any) => {
-  //   setSelectedAccount(event.target.value as string);
-  // };
+  const {
+    data: transactions,
+    loading: isLoading,
+    error,
+  } = useSelector((state: RootState) => state.transactions);
 
-  // Filter transactions by account type
+  const { loading: isDeleting, success: deleteSuccess } = useSelector(
+    (state: RootState) => state.deleteTransaction
+  );
+  const { success: addSuccess } = useSelector(
+    (state: RootState) => state.transactions.addTransactionStatus
+  );
+
+  useEffect(() => {
+    dispatch(apis.transactions());
+    dispatch(apis.categories());
+    dispatch(apis.accountTypes());
+  }, [dispatch, deleteSuccess, addSuccess ]); // Refresh when delete is successful
+
+  const handleDelete = (id: number) => {
+    if (window.confirm("Are you sure you want to delete this transaction?")) {
+      dispatch(apis.deleteTransaction(id));
+    }
+  };
+
+  const columns: GridColDef[] = [
+    {
+      field: "date",
+      headerName: "Date",
+      flex: 1,
+      renderCell: (params) => (
+        <Typography>{localTimeFormat(params.row.date)}</Typography>
+      ),
+    },
+    { field: "description", headerName: "Description", flex: 1 },
+    { field: "category_name", headerName: "Category", flex: 1 },
+    {
+      field: "amount",
+      headerName: "Amount",
+      flex: 1,
+      renderCell: (params) => (
+        <Typography
+          sx={{
+            color:
+              params.row.type === "expense" ? "error.main" : "success.main",
+          }}
+        >
+          {Math.abs(parseFloat(params.value)).toFixed(2)} RWF
+        </Typography>
+      ),
+    },
+    {
+      field: "actions",
+      headerName: "Actions",
+      flex: 0.5,
+      sortable: false,
+      renderCell: (params) => (
+        <IconButton
+          onClick={() => handleDelete(params.row.id)}
+          disabled={isDeleting}
+          color="error"
+          size="small"
+        >
+          <DeleteIcon />
+        </IconButton>
+      ),
+    },
+  ];
+
   const filteredRows = useMemo(
     () =>
       selectedAccount === "All"
@@ -66,9 +106,7 @@ const Transactions = () => {
 
   if (error) {
     return (
-      <Alert severity="error">
-        {error.message || "Failed to load transactions"}
-      </Alert>
+      <Alert severity="error">{error || "Failed to load transactions"}</Alert>
     );
   }
 
@@ -79,10 +117,9 @@ const Transactions = () => {
           <AddTransactionForm />
         </div>
 
-        <div className="">
+        <div className="w-[60rem]">
           <h1 className={styles.t1Transactions}>Recent Transactions</h1>
-
-          <Table columns={columns} rows={filteredRows} height={400} />
+          <Table columns={columns} rows={filteredRows} height={500} />
         </div>
       </div>
     </div>

@@ -1,10 +1,10 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { GridColDef } from "@mui/x-data-grid";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import CircularProgress from "@mui/material/CircularProgress";
 import Alert from "@mui/material/Alert";
-import { useTransactions } from "../../hooks/useTransactions";
 import { styled } from "@mui/material/styles";
 import { LineChart } from "@mui/x-charts";
 import {
@@ -19,6 +19,8 @@ import MenuItem from "@mui/material/MenuItem";
 import Select from "@mui/material/Select";
 import FormControl from "@mui/material/FormControl";
 import InputLabel from "@mui/material/InputLabel";
+import apis from "../../store/api"; // Import the API actions
+import { RootState, AppDispatch } from "../../store"; // Import RootState type
 
 const StyledCardHeader = styled(CardHeader)(({ theme }) => ({
   display: "flex",
@@ -42,8 +44,10 @@ const BudgetTypography = styled(Typography)(({ color }) => ({
   fontWeight: 700,
   color,
 }));
+
 const localTimeFormat = (date: Date | string): string =>
   new Date(date).toLocaleString();
+
 // Column definitions with updated fields
 const columns: GridColDef[] = [
   {
@@ -79,9 +83,21 @@ const columns: GridColDef[] = [
 ];
 
 const Dashboard: React.FC = () => {
-  const { transactions, isLoading, error } = useTransactions();
+  const dispatch = useDispatch<AppDispatch>();
   const [selectedAccount, setSelectedAccount] = useState<string>("All");
   const budget: number = 1000; // Budget
+
+  // Replace useTransactions hook with Redux selectors
+  const {
+    data: transactions,
+    loading: isLoading,
+    error,
+  } = useSelector((state: RootState) => state.transactions);
+
+  // Fetch transactions when component mounts
+  useEffect(() => {
+    dispatch(apis.transactions());
+  }, [dispatch]);
 
   const handleAccountChange = (event: any) => {
     setSelectedAccount(event.target.value as string);
@@ -104,7 +120,6 @@ const Dashboard: React.FC = () => {
   const lineChartData = useMemo(() => {
     const dailyData: { [day: string]: number } = {};
 
-    // Process transactions and accumulate daily balances
     filteredRows.forEach((transaction) => {
       const date = new Date(transaction.date).toLocaleDateString();
       const amount = parseFloat(transaction.amount.toString());
@@ -112,7 +127,6 @@ const Dashboard: React.FC = () => {
       dailyData[date] = (dailyData[date] || 0) + finalAmount;
     });
 
-    // Sort dates and create cumulative sum
     const sortedDates = Object.keys(dailyData).sort(
       (a, b) => new Date(a).getTime() - new Date(b).getTime()
     );
@@ -179,9 +193,7 @@ const Dashboard: React.FC = () => {
   if (error) {
     return (
       <Box p={3}>
-        <Alert severity="error">
-          {error.message || "Failed to load transactions"}
-        </Alert>
+        <Alert severity="error">{error || "Failed to load transactions"}</Alert>
       </Box>
     );
   }
@@ -204,16 +216,6 @@ const Dashboard: React.FC = () => {
           </Select>
         </FormControl>
       </Box>
-      {isLoading && (
-        <Box
-          display="flex"
-          justifyContent="center"
-          alignItems="center"
-          height="40vh"
-        >
-          <CircularProgress />
-        </Box>
-      )}
 
       <div className={styles.cardBox}>
         {summaryCards.map((item, index) => (

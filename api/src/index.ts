@@ -8,7 +8,7 @@ dotenv.config();
 
 const app = express();
 
-const allowedOrigins = ['http://localhost:3000', 'http://localhost:4000', 'http://localhost:3001'];
+const allowedOrigins = ['http://localhost:3000', 'https://wallet-task-force.vercel.app/', 'http://localhost:3001'];
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -20,7 +20,7 @@ app.use(
     },
   })
 );
-app.use(cors({ origin: "*" }));
+// app.use(cors({ origin: "*" }));
 
 app.use(express.json());
 
