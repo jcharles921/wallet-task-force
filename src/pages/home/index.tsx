@@ -18,7 +18,6 @@ import Select from "@mui/material/Select";
 import FormControl from "@mui/material/FormControl";
 import InputLabel from "@mui/material/InputLabel";
 
-
 const StyledCardHeader = styled(CardHeader)(({ theme }) => ({
   display: "flex",
   flexDirection: "row",
@@ -31,11 +30,11 @@ const StyledCardHeader = styled(CardHeader)(({ theme }) => ({
   },
 }));
 
-const AmountTypography = styled(Typography)(({ theme }) => ({
+const AmountTypography = styled(Typography)(({}) => ({
   fontSize: "1.5rem",
   fontWeight: 700,
 }));
-const BudgetTypography = styled(Typography)(({ theme, color }) => ({
+const BudgetTypography = styled(Typography)(({ color }) => ({
   fontSize: "1.5rem",
   fontWeight: 700,
   color,
@@ -77,7 +76,7 @@ const columns: GridColDef[] = [
 ];
 
 const Dashboard: React.FC = () => {
-  const [rows, setRows] = useState<Transaction[]>(initialRows);
+  const [rows, _] = useState<Transaction[]>(initialRows);
   const [selectedAccount, setSelectedAccount] = useState<string>("All");
 
   // Handle account selection
@@ -130,7 +129,7 @@ const Dashboard: React.FC = () => {
     ];
   }, [filteredRows]);
 
-  const [budget, setBudget] = useState<number>(1000); 
+  const budget: number = 1000; // Budget
 
   const totalExpenses = useMemo(() => {
     return filteredRows

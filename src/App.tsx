@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+
 import {
   createBrowserRouter,
   RouterProvider,
@@ -9,7 +9,7 @@ import Home from "./pages/home";
 import Layout from "./components/Layout";
 import Transactions from "./pages/transactions";
 import NotFound from "./components/NotFound";
-import "./App.css";
+import Categories from "./pages/categories";
 
 function App() {
   const router = createBrowserRouter(
@@ -18,6 +18,7 @@ function App() {
         <Route path="/" element={<Layout />}>
           <Route index element={<Home />} />
           <Route path="transactions" element={<Transactions />} />
+          <Route path="categories" element={<Categories />} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import  { useState } from "react";
 import styles from "../../styles/global.module.css";
 import { Table } from "../../containers/Tables";
 import AddTransactionForm from "../../components/AddTransactionForm";
@@ -65,14 +65,14 @@ const columns: GridColDef[] = [
 ];
 
 const Transactions = () => {
-  const [rows, setRows] = useState(initialRows);
+  const [rows, _] = useState(initialRows);
 
-  const handleAddTransaction = (newTransaction: any) => {
-    setRows((prevRows) => [
-      { ...newTransaction, id: prevRows.length + 1 },
-      ...prevRows,
-    ]);
-  };
+//   const handleAddTransaction = (newTransaction: any) => {
+//     setRows((prevRows) => [
+//       { ...newTransaction, id: prevRows.length + 1 },
+//       ...prevRows,
+//     ]);
+//   };
 
   return (
     <div className="w-full flex flex-col">

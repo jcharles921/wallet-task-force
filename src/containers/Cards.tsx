@@ -22,7 +22,7 @@ const CardHeader = styled(Box)(({ theme }) => ({
 }));
 
 // CardTitle
-const CardTitle = styled(Box)(({ theme }) => ({
+const CardTitle = styled(Box)(({  }) => ({
   fontSize: '1.5rem',
   fontWeight: 600,
   lineHeight: 1,
