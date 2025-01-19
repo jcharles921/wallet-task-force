@@ -6,11 +6,14 @@ import {
   LinearProgress,
 } from "@mui/material";
 
-const BudgetOverview = () => {
-  const totalBudget = 2000;
-  const spent = 1500;
-  const remaining = totalBudget - spent;
-  const spentPercentage = (spent / totalBudget) * 100;
+interface BudgetOverviewProps {
+  totalBudget?: number;
+  spent: number;
+  remaining: number;
+  spentPercentage: number;
+}
+
+const BudgetOverview = ({  spent, remaining, spentPercentage }: BudgetOverviewProps) => {
   const remainingPercentage = 100 - spentPercentage;
 
   return (
@@ -26,7 +29,6 @@ const BudgetOverview = () => {
         Budget Overview
       </Typography>
       <p className="text-[#9B9B9B] mb-4">Adjust your monthly budget</p>
-
       <LinearProgress
         variant="determinate"
         value={spentPercentage}
@@ -39,7 +41,6 @@ const BudgetOverview = () => {
           },
         }}
       />
-
       <Box
         sx={{
           display: "flex",
@@ -65,7 +66,6 @@ const BudgetOverview = () => {
             </Typography>
           </CardContent>
         </Card>
-
         <Card
           sx={{
             flex: 1,

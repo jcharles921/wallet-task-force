@@ -13,6 +13,10 @@ interface CategoryInput {
   name: string;
   parent_id: number | null;
 }
+interface BudgetInput {
+    account_id: number;
+    spending_limit: number;
+  }
 
 class Api {
   resetAll = createAction("resetAll");
@@ -32,6 +36,31 @@ class Api {
 
         const data = await response.json();
         return data;
+      } catch (error: any) {
+        return rejectWithValue({ error: error?.message });
+      }
+    }
+  );
+  setBudget = createAsyncThunk(
+    "setBudget",
+    async (data: BudgetInput, { rejectWithValue }) => {
+      try {
+        const response = await fetch(`${endpoints.accountTypes}/${data.account_id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            spending_limit: typeof data.spending_limit === "string" ? parseFloat(data.spending_limit) : data.spending_limit,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        return result;
       } catch (error: any) {
         return rejectWithValue({ error: error?.message });
       }

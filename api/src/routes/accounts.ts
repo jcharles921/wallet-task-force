@@ -43,13 +43,13 @@ router.post('/', async (req: Request, res: Response) => {
 router.put('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, type, spending_limit } = req.body;
+    const { spending_limit } = req.body;
     const result = await pool.query<Account>(
       `UPDATE accounts 
-       SET name = $1, type = $2, spending_limit = $3
-       WHERE id = $4
+       SET spending_limit = $1
+       WHERE id = $2
        RETURNING *`,
-      [name, type, spending_limit, id]
+      [spending_limit, id]
     );
     res.json(result.rows[0]);
   } catch (error) {
