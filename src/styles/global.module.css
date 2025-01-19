@@ -1,0 +1,21 @@
+.navBar{
+    @apply h-20 w-full p-16 flex justify-between items-center ;
+}
+.navLinks{
+    @apply flex space-x-8 ;
+}
+.navLink{
+    @apply flex items-center h-16 cursor-pointer hover:border-none;
+}
+.active{
+    @apply text-indigo border-b-2 border-indigo;
+}
+.mainBox{
+    @apply flex flex-col items-center gap-4 justify-center h-full w-full;
+}
+.cardBox{
+    @apply flex flex-wrap gap-4 w-full max-w-[75.75rem];
+}
+.titleTransactions{
+    @apply text-2xl font-bold;
+}
