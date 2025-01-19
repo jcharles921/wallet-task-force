@@ -4,6 +4,7 @@ import { endpoints } from '../config/api';
 interface AccountType {
   id: number;
   name: string;
+  account_id: number;
 }
 
 interface AccountTypeHookResult {

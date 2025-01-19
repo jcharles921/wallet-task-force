@@ -71,7 +71,7 @@ const columns: GridColDef[] = [
 
       return (
         <Typography sx={{ color: isExpense ? "error.main" : "success.main" }}>
-          ${Math.abs(displayAmount).toFixed(2)}
+          {Math.abs(displayAmount).toFixed(2)} RWF
         </Typography>
       );
     },

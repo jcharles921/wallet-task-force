@@ -1,8 +1,17 @@
-import  { useState } from "react";
+import { useState } from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
-import { Box, Button, MenuItem, TextField, Typography } from "@mui/material";
-
+import {
+  Box,
+  Button,
+  MenuItem,
+  TextField,
+  Typography,
+  CircularProgress,
+} from "@mui/material";
+import { useTransactionMutations } from "../hooks/useTransactionMutations";
+import { useCategories } from "../hooks/useCategories";
+import { useAccountTypes } from "../hooks/useAccountTypes";
 
 // Validation Schema
 const formSchema = Yup.object().shape({
@@ -12,12 +21,8 @@ const formSchema = Yup.object().shape({
   type: Yup.string()
     .oneOf(["income", "expense"], "Type must be either 'income' or 'expense'")
     .required("Type is required"),
-  category: Yup.string().required("Category is required"),
-//   subcategory: Yup.string().required("Subcategory is required"),
-//   account: Yup.string().required("Account is required"),
-  accountType: Yup.string()
-    .oneOf(["Bank", "Mobile Money", "Cash"], "Select a valid account type")
-    .required("Account type is required"),
+  category_id: Yup.number().required("Category is required"),
+  account_type_id: Yup.number().required("Account type is required"),
   description: Yup.string()
     .max(250, "Description should not exceed 250 characters")
     .optional(),
@@ -25,45 +30,73 @@ const formSchema = Yup.object().shape({
 
 const AddTransactionForm = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const {
+    categories,
+    isLoading: categoriesLoading,
+    error: categoriesError,
+  } = useCategories();
+  const {
+    accountTypes,
+    isLoading: accountTypesLoading,
+    error: accountTypesError,
+  } = useAccountTypes();
+  const { addTransaction, error: submitError } = useTransactionMutations();
 
-  const subcategoryOptions: { [key: string]: string[] } = {
-    Food: ["Groceries", "Dining Out", "Snacks"],
-    Rent: ["Monthly Rent", "Utilities"],
-    Transport: ["Fuel", "Public Transport", "Parking"],
-    Other: ["Miscellaneous"],
-  };
 
   const formik = useFormik({
     initialValues: {
       amount: "",
       type: "expense",
-      category: "",
-      subcategory: "",
-      account: "",
-      accountType: "",
+      category_id: "",
+      account_type_id: "",
       description: "",
     },
     validationSchema: formSchema,
     onSubmit: async (values, { resetForm }) => {
       setIsLoading(true);
-      console.log(values);
       try {
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        // Find the selected account type
+
+        console.log(JSON.stringify(values, null, 2) + "  =====> values");
+        await addTransaction({
+          amount: values.amount,
+          type: values.type as 'income' | 'expense',
+          category_id: Number(values.category_id),
+       
+          account_id: Number(values.account_type_id),
+          description: values.description,
+        
+        });
         resetForm();
       } catch (error) {
-        console.error("Error adding transaction:", error);
+        console.error("Error submitting form:", error);
       } finally {
         setIsLoading(false);
       }
     },
   });
 
-  // Handle Subcategory reset when Category changes
-  const handleCategoryChange = (e:any) => {
-    formik.setFieldValue("category", e.target.value);
-    formik.setFieldValue("subcategory", ""); // Reset subcategory when category changes
-  };
+  if (categoriesLoading || accountTypesLoading) {
+    return (
+      <Box
+        display="flex"
+        justifyContent="center"
+        alignItems="center"
+        height="400px"
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (categoriesError || accountTypesError) {
+    return (
+      <Box sx={{ color: "error.main", textAlign: "center", mt: 4 }}>
+        Error loading form data:{" "}
+        {categoriesError?.message || accountTypesError?.message}
+      </Box>
+    );
+  }
 
   return (
     <Box
@@ -78,16 +111,23 @@ const AddTransactionForm = () => {
         mt: 4,
       }}
     >
-    <Typography
-            variant="h5"
-            gutterBottom
-            sx={{
-              alignSelf: "flex-start",
-              fontWeight: "Bold",
-            }}
-          >
-        Add Transactions
+      <Typography
+        variant="h5"
+        gutterBottom
+        sx={{
+          alignSelf: "flex-start",
+          fontWeight: "Bold",
+        }}
+      >
+        Add Transaction
       </Typography>
+
+      {submitError && (
+        <Typography color="error" sx={{ mb: 2 }}>
+          {submitError.message}
+        </Typography>
+      )}
+
       <TextField
         fullWidth
         id="amount"
@@ -101,7 +141,6 @@ const AddTransactionForm = () => {
         helperText={formik.touched.amount && formik.errors.amount}
       />
 
-      {/* Type Field */}
       <TextField
         select
         fullWidth
@@ -118,80 +157,49 @@ const AddTransactionForm = () => {
         <MenuItem value="expense">Expense</MenuItem>
       </TextField>
 
-      {/* Category Field */}
       <TextField
         select
         fullWidth
-        id="category"
-        name="category"
+        id="category_id"
+        name="category_id"
         label="Category"
-        value={formik.values.category}
-        onChange={handleCategoryChange}
+        value={formik.values.category_id}
+        onChange={formik.handleChange}
         onBlur={formik.handleBlur}
-        error={formik.touched.category && Boolean(formik.errors.category)}
-        helperText={formik.touched.category && formik.errors.category}
+        error={formik.touched.category_id && Boolean(formik.errors.category_id)}
+        helperText={formik.touched.category_id && formik.errors.category_id}
       >
-        {Object.keys(subcategoryOptions).map((category) => (
-          <MenuItem key={category} value={category}>
-            {category}
+        {categories.map((category) => (
+          <MenuItem key={category.id} value={category.id}>
+            {category.name}
           </MenuItem>
         ))}
       </TextField>
 
-      {/* Subcategory Field */}
-      {/* <TextField
-        select
-        fullWidth
-        id="subcategory"
-        name="subcategory"
-        label="Subcategory"
-        value={formik.values.subcategory}
-        onChange={formik.handleChange}
-        onBlur={formik.handleBlur}
-        error={formik.touched.subcategory && Boolean(formik.errors.subcategory)}
-        helperText={formik.touched.subcategory && formik.errors.subcategory}
-        disabled={!formik.values.category} // Disable if no category is selected
-      >
-        {(subcategoryOptions[formik.values.category as keyof typeof subcategoryOptions] || []).map((subcat) => (
-          <MenuItem key={subcat} value={subcat}>
-            {subcat}
-          </MenuItem>
-        ))}
-      </TextField> */}
-
-      {/* Account Field */}
-      <TextField
-        fullWidth
-        id="account"
-        name="account"
-        label="Account"
-        placeholder="e.g., Savings, Credit Card"
-        value={formik.values.account}
-        onChange={formik.handleChange}
-        onBlur={formik.handleBlur}
-        error={formik.touched.account && Boolean(formik.errors.account)}
-        helperText={formik.touched.account && formik.errors.account}
-      />
-
-      {/* Account Type Field */}
       <TextField
         select
         fullWidth
-        id="accountType"
-        name="accountType"
+        id="account_type_id"
+        name="account_type_id"
         label="Account Type"
-        value={formik.values.accountType}
+        value={formik.values.account_type_id}
         onChange={formik.handleChange}
         onBlur={formik.handleBlur}
-        error={formik.touched.accountType && Boolean(formik.errors.accountType)}
-        helperText={formik.touched.accountType && formik.errors.accountType}
+        error={
+          formik.touched.account_type_id &&
+          Boolean(formik.errors.account_type_id)
+        }
+        helperText={
+          formik.touched.account_type_id && formik.errors.account_type_id
+        }
       >
-        <MenuItem value="Bank">Bank</MenuItem>
-        <MenuItem value="Mobile Money">Mobile Money</MenuItem>
-        <MenuItem value="Cash">Cash</MenuItem>
+        {accountTypes.map((type) => (
+          <MenuItem key={type.id} value={type.id}>
+            {type.name}
+          </MenuItem>
+        ))}
       </TextField>
 
-      {/* Description Field */}
       <TextField
         fullWidth
         id="description"
@@ -205,18 +213,16 @@ const AddTransactionForm = () => {
         helperText={formik.touched.description && formik.errors.description}
       />
 
-      {/* Submit Button */}
       <Button
         type="submit"
         variant="contained"
-        
         fullWidth
-        disabled={isLoading}
+        disabled={isLoading || categoriesLoading || accountTypesLoading}
         sx={{
           textTransform: "none",
           fontFamily: "Rubik, sans-serif",
           fontWeight: "400",
-          color:"white",
+          color: "white",
           backgroundColor: "#014e7a",
         }}
       >

@@ -1,53 +1,26 @@
-import  { useState } from "react";
+import { useMemo, useState } from "react";
 import styles from "../../styles/global.module.css";
 import { Table } from "../../containers/Tables";
 import AddTransactionForm from "../../components/AddTransactionForm";
 import { GridColDef } from "@mui/x-data-grid";
 import Typography from "@mui/material/Typography";
+import CircularProgress from "@mui/material/CircularProgress";
+import Alert from "@mui/material/Alert";
+import { useTransactions } from "../../hooks/useTransactions";
 
-// Sample transaction data
-const initialRows = [
-  {
-    id: 1,
-    date: "2025-01-17",
-    description: "Groceries",
-    amount: -50.0,
-    category: "Food",
-  },
-  {
-    id: 2,
-    date: "2025-01-16",
-    description: "Freelance",
-    amount: 200.0,
-    category: "Income",
-  },
-  {
-    id: 3,
-    date: "2025-01-15",
-    description: "Transportation",
-    amount: -30.0,
-    category: "Travel",
-  },
-  {
-    id: 4,
-    date: "2025-01-14",
-    description: "Dining",
-    amount: -80.0,
-    category: "Food",
-  },
-  {
-    id: 5,
-    date: "2025-01-13",
-    description: "Salary",
-    amount: 100.0,
-    category: "Income",
-  },
-];
-
+const localTimeFormat = (date: Date | string): string =>
+  new Date(date).toLocaleString();
 const columns: GridColDef[] = [
-  { field: "date", headerName: "Date", width: 150 },
+  {
+    field: "date",
+    headerName: "Date",
+    width: 150,
+    renderCell: (params) => (
+      <Typography>{localTimeFormat(params.row.date)}</Typography>
+    ),
+  },
   { field: "description", headerName: "Description", width: 200 },
-  { field: "category", headerName: "Category", width: 150 },
+  { field: "category_name", headerName: "Category", width: 150 },
   {
     field: "amount",
     headerName: "Amount",
@@ -56,35 +29,60 @@ const columns: GridColDef[] = [
     headerAlign: "right",
     renderCell: (params) => (
       <Typography
-        sx={{ color: params.value < 0 ? "error.main" : "success.main" }}
+        sx={{
+          color: params.row.type === "expense" ? "error.main" : "success.main",
+        }}
       >
-        ${Math.abs(params.value).toFixed(2)}
+        ${Math.abs(parseFloat(params.value)).toFixed(2)}
       </Typography>
     ),
   },
 ];
 
 const Transactions = () => {
-  const [rows, _] = useState(initialRows);
+  const { transactions, isLoading, error } = useTransactions();
+  const [selectedAccount, _] = useState<string>("All");
 
-//   const handleAddTransaction = (newTransaction: any) => {
-//     setRows((prevRows) => [
-//       { ...newTransaction, id: prevRows.length + 1 },
-//       ...prevRows,
-//     ]);
-//   };
+  // const handleAccountChange = (event: any) => {
+  //   setSelectedAccount(event.target.value as string);
+  // };
+
+  // Filter transactions by account type
+  const filteredRows = useMemo(
+    () =>
+      selectedAccount === "All"
+        ? transactions
+        : transactions.filter((row) => row.account_name === selectedAccount),
+    [transactions, selectedAccount]
+  );
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-full">
+        <CircularProgress />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert severity="error">
+        {error.message || "Failed to load transactions"}
+      </Alert>
+    );
+  }
 
   return (
     <div className="w-full flex flex-col">
       <div className="flex flex-row gap-2 w-full items-center justify-center">
-        <div className=" w-1/2">
+        <div className="w-1/3">
           <AddTransactionForm />
         </div>
 
-        <div className="  pr-10">
-          <h1 className={styles.t1Transactions}>Recents Transactions</h1>
+        <div className="">
+          <h1 className={styles.t1Transactions}>Recent Transactions</h1>
 
-          <Table columns={columns} rows={rows} height={400} />
+          <Table columns={columns} rows={filteredRows} height={400} />
         </div>
       </div>
     </div>

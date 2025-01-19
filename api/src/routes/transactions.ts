@@ -83,8 +83,15 @@ router.post('/', async (req: Request, res: Response) => {
       `INSERT INTO transactions (account_id, category_id, amount, type, description)
        VALUES ($1, $2, $3, $4, $5)
        RETURNING *`,
-      [account_id, category_id, amount, type, description]
+      [
+        account_id || null,
+        category_id || null,
+        amount,
+        type,
+        description || null
+      ]
     );
+    
     
     await client.query('COMMIT');
     res.json(result.rows[0]);
