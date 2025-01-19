@@ -6,6 +6,13 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        fancy: ['"Dancing Script"', 'cursive'], // Add the font under a custom key like 'fancy'
+      },
+      colors:{
+        indigo:"#014e7a",
+        tiffanie:"#A9DDD6"
+      },
       screens: {
         xxs: "360px", 
         xs:"400px",
