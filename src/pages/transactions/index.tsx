@@ -76,13 +76,14 @@ const Transactions = () => {
 
   return (
     <div className="w-full flex flex-col">
-      <h1 className={styles.titleTransactions}>Transactions</h1>
       <div className="flex flex-row gap-2 w-full items-center justify-center">
         <div className=" w-1/2">
           <AddTransactionForm />
         </div>
 
-        <div className="w-1/2 pr-10">
+        <div className="  pr-10">
+          <h1 className={styles.t1Transactions}>Recents Transactions</h1>
+
           <Table columns={columns} rows={rows} height={400} />
         </div>
       </div>
