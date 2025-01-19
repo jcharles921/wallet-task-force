@@ -7,6 +7,9 @@
 .navLink {
   @apply flex items-center h-16 cursor-pointer hover:border-none;
 }
+.notificationIcon{
+  @apply cursor-pointer
+}
 .active {
   @apply text-indigo border-b-2 border-indigo;
 }
@@ -21,4 +24,7 @@
 }
 .t2Transactions {
   @apply text-xl font-medium;
+}
+.budgetBox {
+  @apply flex flex-col items-center gap-4 w-full ;
 }

@@ -39,7 +39,6 @@ const Table: React.FC<DataGridComponentProps> = ({
           '& .MuiDataGrid-cell':{
             display: 'flex',
             alignItems: 'center',
-           
           }
 
         }}

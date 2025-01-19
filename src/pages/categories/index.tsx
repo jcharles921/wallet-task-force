@@ -17,7 +17,7 @@ import {
 } from "@mui/material";
 import { CustomButton } from "../../containers/Buttons";
 import { Delete, Edit } from "@mui/icons-material";
-import ClearOutlinedIcon from '@mui/icons-material/ClearOutlined';
+import ClearOutlinedIcon from "@mui/icons-material/ClearOutlined";
 
 const Categories = () => {
   const [categories, setCategories] = useState([
@@ -104,23 +104,23 @@ const Categories = () => {
     setNewSubcategoryName(subcategory);
   };
 
-//   const handleSaveSubcategory = () => {
-//     setCategories((prev) =>
-//       prev.map((cat) => {
-//         if (cat.name === editSubcategory.category) {
-//           return {
-//             ...cat,
-//             subcategories: cat.subcategories.map((sub) =>
-//               sub === editSubcategory.subcategory ? newSubcategoryName : sub
-//             ),
-//           };
-//         }
-//         return cat;
-//       })
-//     );
-//     setEditSubcategory({ open: false, category: "", subcategory: "" });
-//     setNewSubcategoryName("");
-//   };
+  //   const handleSaveSubcategory = () => {
+  //     setCategories((prev) =>
+  //       prev.map((cat) => {
+  //         if (cat.name === editSubcategory.category) {
+  //           return {
+  //             ...cat,
+  //             subcategories: cat.subcategories.map((sub) =>
+  //               sub === editSubcategory.subcategory ? newSubcategoryName : sub
+  //             ),
+  //           };
+  //         }
+  //         return cat;
+  //       })
+  //     );
+  //     setEditSubcategory({ open: false, category: "", subcategory: "" });
+  //     setNewSubcategoryName("");
+  //   };
 
   return (
     <div className="flex gap-10 justify-center  ">
@@ -163,14 +163,13 @@ const Categories = () => {
           customWidth={"100%"}
           sx={{ mt: 2 }}
           customHeight={"40px"}
-         
         >
           Add Category
         </CustomButton>
       </div>
 
       {/* Categories List */}
-      <div className=" w-auto flex flex-col items-center justify-center pl-40">
+      <div className=" w-auto flex flex-col  items-center justify-center pl-8">
         <Typography
           variant="h6"
           gutterBottom
@@ -181,56 +180,60 @@ const Categories = () => {
         >
           Categories
         </Typography>
-        {categories.map((category) => (
-          <Paper
-            key={category.name}
-            variant="outlined"
-            sx={{ mb: 2, p: 2, width: "400px" }}
-          >
-            <Box
-              display="flex"
-              justifyContent="space-between"
-              alignItems="center"
+        <div className=" overflow-y-scroll  grid grid-cols-2 gap-4 max-h-[calc(100vh-160px)]">
+          {categories.map((category) => (
+            <Paper
+              key={category.name}
+              variant="outlined"
+              sx={{ mb: 2, p: 2, width: "400px" }}
             >
-              <Typography variant="subtitle1" fontWeight="bold">
-                {category.name}
-              </Typography>
-              <IconButton
-                onClick={() => handleDeleteCategory(category.name)}
-                color="primary"
+              <Box
+                display="flex"
+                justifyContent="space-between"
+                alignItems="center"
               >
-                <ClearOutlinedIcon />
-              </IconButton>
-            </Box>
-            <List>
-              {category.subcategories.map((sub) => (
-                <ListItem
-                  key={sub}
-                  secondaryAction={
-                    <>
-                      <IconButton
-                        onClick={() =>
-                          handleEditSubcategory(category.name, sub)
-                        }
-                        color="primary"
-                      >
-                        <Edit />
-                      </IconButton>
-                      <IconButton
-                        onClick={() => handleDeleteCategory(category.name, sub)}
-                        color="error"
-                      >
-                        <Delete />
-                      </IconButton>
-                    </>
-                  }
+                <Typography variant="subtitle1" fontWeight="bold">
+                  {category.name}
+                </Typography>
+                <IconButton
+                  onClick={() => handleDeleteCategory(category.name)}
+                  color="primary"
                 >
-                  <ListItemText primary={sub} />
-                </ListItem>
-              ))}
-            </List>
-          </Paper>
-        ))}
+                  <ClearOutlinedIcon />
+                </IconButton>
+              </Box>
+              <List>
+                {category.subcategories.map((sub) => (
+                  <ListItem
+                    key={sub}
+                    secondaryAction={
+                      <>
+                        <IconButton
+                          onClick={() =>
+                            handleEditSubcategory(category.name, sub)
+                          }
+                          color="primary"
+                        >
+                          <Edit />
+                        </IconButton>
+                        <IconButton
+                          onClick={() =>
+                            handleDeleteCategory(category.name, sub)
+                          }
+                          color="error"
+                        >
+                          <Delete />
+                        </IconButton>
+                      </>
+                    }
+                  >
+                    <ListItemText primary={sub} />
+                  </ListItem>
+                ))}
+              </List>
+            </Paper>
+          ))}
+        </div>
       </div>
 
       {/* Edit Subcategory Dialog */}

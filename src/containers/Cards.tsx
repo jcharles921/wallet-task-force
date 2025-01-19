@@ -2,7 +2,16 @@
 import { styled } from '@mui/material/styles';
 import MuiCard from '@mui/material/Card';
 import Box from '@mui/material/Box';
+import { Paper } from '@mui/material';
 
+const BudgetCard = styled(Paper)(({ theme }) => ({
+  width:'600px',
+  display: 'flex',
+  flexDirection: 'column',
+  padding: theme.spacing(3),
+  borderRadius: theme.shape.borderRadius,
+  boxShadow: theme.shadows[2],
+}));
 
 // Card
 const Card = styled(MuiCard)(({ theme }) => ({
@@ -64,4 +73,5 @@ export {
   CardDescription,
   CardContent,
   CardFooter,
+  BudgetCard,
 };

@@ -1,4 +1,3 @@
-
 import {
   createBrowserRouter,
   RouterProvider,
@@ -10,6 +9,8 @@ import Layout from "./components/Layout";
 import Transactions from "./pages/transactions";
 import NotFound from "./components/NotFound";
 import Categories from "./pages/categories";
+import Budgets from "./pages/budgets";
+import Reports from "./pages/reports";
 
 function App() {
   const router = createBrowserRouter(
@@ -19,6 +20,8 @@ function App() {
           <Route index element={<Home />} />
           <Route path="transactions" element={<Transactions />} />
           <Route path="categories" element={<Categories />} />
+          <Route path="budgets" element={<Budgets />} />
+          <Route path="reports" element={<Reports />} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </>

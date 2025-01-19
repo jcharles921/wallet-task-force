@@ -2,7 +2,7 @@ import  { useState } from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { Box, Button, MenuItem, TextField, Typography } from "@mui/material";
-import styles from "../styles/global.module.css";
+
 
 // Validation Schema
 const formSchema = Yup.object().shape({
@@ -78,7 +78,14 @@ const AddTransactionForm = () => {
         mt: 4,
       }}
     >
-      <Typography variant="h5" className={styles.t2Transactions}>
+    <Typography
+            variant="h5"
+            gutterBottom
+            sx={{
+              alignSelf: "flex-start",
+              fontWeight: "Bold",
+            }}
+          >
         Add Transactions
       </Typography>
       <TextField

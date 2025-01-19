@@ -79,12 +79,10 @@ const Dashboard: React.FC = () => {
   const [rows, _] = useState<Transaction[]>(initialRows);
   const [selectedAccount, setSelectedAccount] = useState<string>("All");
 
-  // Handle account selection
   const handleAccountChange = (event: any) => {
     setSelectedAccount(event.target.value as string);
   };
 
-  // Filtered Transactions
   const filteredRows = useMemo(
     () =>
       selectedAccount === "All"
@@ -93,7 +91,6 @@ const Dashboard: React.FC = () => {
     [rows, selectedAccount]
   );
 
-  // Aggregate Line Chart Data
   const lineChartData = useMemo(() => {
     const monthlyData: { [month: string]: number } = {};
 
@@ -120,11 +117,11 @@ const Dashboard: React.FC = () => {
     const totalBalance = totalIncome + totalExpenses;
 
     return [
-      { title: "Total Balance", amount: `$${totalBalance.toFixed(2)}` },
-      { title: "Total Income", amount: `$${totalIncome.toFixed(2)}` },
+      { title: "Total Balance", amount: `${totalBalance.toFixed(2)} RWF` },
+      { title: "Total Income", amount: `${totalIncome.toFixed(2)} RWF` },
       {
         title: "Total Expenses",
-        amount: `$${Math.abs(totalExpenses).toFixed(2)}`,
+        amount: `${Math.abs(totalExpenses).toFixed(2)} RWF`,
       },
     ];
   }, [filteredRows]);
@@ -137,8 +134,8 @@ const Dashboard: React.FC = () => {
       .reduce((sum, t) => sum + t.amount, 0);
   }, [filteredRows]);
 
-  const remainingBudget = budget + totalExpenses; // Calculate remaining budget
-  const budgetColor = remainingBudget <= budget * 0.2 ? "red" : "green"; // Change color when close to zero
+  const remainingBudget = budget + totalExpenses;
+  const budgetColor = remainingBudget <= budget * 0.2 ? "red" : "green"; //
 
   return (
     <div className={styles.mainBox}>
@@ -188,7 +185,7 @@ const Dashboard: React.FC = () => {
             </StyledCardHeader>
             <CardContent>
               <BudgetTypography color={budgetColor}>
-                ${remainingBudget.toFixed(2)}
+                {remainingBudget.toFixed(2)} RWF
               </BudgetTypography>
             </CardContent>
           </Card>
