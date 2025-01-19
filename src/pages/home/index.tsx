@@ -2,6 +2,9 @@ import React, { useState, useMemo } from "react";
 import { GridColDef } from "@mui/x-data-grid";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
+import CircularProgress from "@mui/material/CircularProgress";
+import Alert from "@mui/material/Alert";
+import { useTransactions } from "../../hooks/useTransactions";
 import { styled } from "@mui/material/styles";
 import { LineChart } from "@mui/x-charts";
 import {
@@ -10,7 +13,6 @@ import {
   CardHeader,
   CardTitle,
 } from "../../containers/Cards";
-import { initialRows } from "../../utils/dummy";
 import { Table } from "../../containers/Tables";
 import styles from "../../styles/global.module.css";
 import MenuItem from "@mui/material/MenuItem";
@@ -34,108 +36,155 @@ const AmountTypography = styled(Typography)(({}) => ({
   fontSize: "1.5rem",
   fontWeight: 700,
 }));
+
 const BudgetTypography = styled(Typography)(({ color }) => ({
   fontSize: "1.5rem",
   fontWeight: 700,
   color,
 }));
-interface Transaction {
-  id: number;
-  date: string;
-  description: string;
-  amount: number;
-  category: string;
-  accountType: string;
-}
-
-// Column definitions
+const localTimeFormat = (date: Date | string): string =>
+  new Date(date).toLocaleString();
+// Column definitions with updated fields
 const columns: GridColDef[] = [
-  { field: "date", headerName: "Date", width: 150, type: "string" },
+  {
+    field: "date",
+    headerName: "Date",
+    flex: 1,
+    renderCell: (params) => (
+      <Typography>{localTimeFormat(params.row.date)}</Typography>
+    ),
+  },
   {
     field: "description",
     headerName: "Description",
-    width: 200,
-    type: "string",
+    flex: 1,
   },
-  { field: "category", headerName: "Category", width: 150, type: "string" },
+  { field: "category_name", headerName: "Category", flex: 1 },
   {
     field: "amount",
     headerName: "Amount",
-    width: 150,
-    type: "number",
-    align: "right",
-    headerAlign: "right",
-    renderCell: (params) => (
-      <Typography
-        sx={{ color: params.value < 0 ? "error.main" : "success.main" }}
-      >
-        ${Math.abs(params.value).toFixed(2)}
-      </Typography>
-    ),
+    flex: 1,
+    renderCell: (params) => {
+      const amount = parseFloat(params.row.amount);
+      const isExpense = params.row.type === "expense";
+      const displayAmount = isExpense ? -amount : amount;
+
+      return (
+        <Typography sx={{ color: isExpense ? "error.main" : "success.main" }}>
+          ${Math.abs(displayAmount).toFixed(2)}
+        </Typography>
+      );
+    },
   },
 ];
 
 const Dashboard: React.FC = () => {
-  const [rows, _] = useState<Transaction[]>(initialRows);
+  const { transactions, isLoading, error } = useTransactions();
   const [selectedAccount, setSelectedAccount] = useState<string>("All");
+  const budget: number = 1000; // Budget
 
   const handleAccountChange = (event: any) => {
     setSelectedAccount(event.target.value as string);
   };
 
+  // Get unique account types from transactions
+  const accountTypes = useMemo(() => {
+    const types = new Set(transactions.map((t) => t.account_name));
+    return ["All", ...Array.from(types)];
+  }, [transactions]);
+
   const filteredRows = useMemo(
     () =>
       selectedAccount === "All"
-        ? rows
-        : rows.filter((row) => row.accountType === selectedAccount),
-    [rows, selectedAccount]
+        ? transactions
+        : transactions.filter((row) => row.account_name === selectedAccount),
+    [transactions, selectedAccount]
   );
 
   const lineChartData = useMemo(() => {
-    const monthlyData: { [month: string]: number } = {};
+    const dailyData: { [day: string]: number } = {};
 
+    // Process transactions and accumulate daily balances
     filteredRows.forEach((transaction) => {
-      const month = new Date(transaction.date).toLocaleString("default", {
-        month: "short",
-      });
-      monthlyData[month] = (monthlyData[month] || 0) + transaction.amount;
+      const date = new Date(transaction.date).toLocaleDateString();
+      const amount = parseFloat(transaction.amount.toString());
+      const finalAmount = transaction.type === "expense" ? -amount : amount;
+      dailyData[date] = (dailyData[date] || 0) + finalAmount;
     });
 
-    return Object.keys(monthlyData).map((month) => ({
-      x: month,
-      y: monthlyData[month],
-    }));
+    // Sort dates and create cumulative sum
+    const sortedDates = Object.keys(dailyData).sort(
+      (a, b) => new Date(a).getTime() - new Date(b).getTime()
+    );
+
+    let cumulativeSum = 0;
+    return sortedDates.map((date) => {
+      cumulativeSum += dailyData[date];
+      return {
+        x: date,
+        y: cumulativeSum,
+      };
+    });
   }, [filteredRows]);
 
   const summaryCards = useMemo(() => {
     const totalIncome = filteredRows
-      .filter((t) => t.amount > 0)
-      .reduce((sum, t) => sum + t.amount, 0);
+      .filter((t) => t.type === "income")
+      .reduce((sum, t) => sum + parseFloat(t.amount.toString()), 0);
+
     const totalExpenses = filteredRows
-      .filter((t) => t.amount < 0)
-      .reduce((sum, t) => sum + t.amount, 0);
-    const totalBalance = totalIncome + totalExpenses;
+      .filter((t) => t.type === "expense")
+      .reduce((sum, t) => sum + parseFloat(t.amount.toString()), 0);
+
+    const totalBalance = totalIncome - totalExpenses;
 
     return [
-      { title: "Total Balance", amount: `${totalBalance.toFixed(2)} RWF` },
-      { title: "Total Income", amount: `${totalIncome.toFixed(2)} RWF` },
+      {
+        title: "Total Balance",
+        amount: `$${totalBalance.toFixed(2)} RWF`,
+      },
+      {
+        title: "Total Income",
+        amount: `$${totalIncome.toFixed(2)} RWF`,
+      },
       {
         title: "Total Expenses",
-        amount: `${Math.abs(totalExpenses).toFixed(2)} RWF`,
+        amount: `$${totalExpenses.toFixed(2)} RWF`,
       },
     ];
   }, [filteredRows]);
 
-  const budget: number = 1000; // Budget
-
   const totalExpenses = useMemo(() => {
     return filteredRows
-      .filter((t) => t.amount < 0)
-      .reduce((sum, t) => sum + t.amount, 0);
+      .filter((t) => t.type === "expense")
+      .reduce((sum, t) => sum + parseFloat(t.amount.toString()), 0);
   }, [filteredRows]);
 
-  const remainingBudget = budget + totalExpenses;
-  const budgetColor = remainingBudget <= budget * 0.2 ? "red" : "green"; //
+  const remainingBudget = budget - totalExpenses;
+  const budgetColor = remainingBudget <= budget * 0.2 ? "red" : "green";
+
+  if (isLoading) {
+    return (
+      <Box
+        display="flex"
+        justifyContent="center"
+        alignItems="center"
+        height="100vh"
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box p={3}>
+        <Alert severity="error">
+          {error.message || "Failed to load transactions"}
+        </Alert>
+      </Box>
+    );
+  }
 
   return (
     <div className={styles.mainBox}>
@@ -147,13 +196,24 @@ const Dashboard: React.FC = () => {
             onChange={handleAccountChange}
             label="Account Type"
           >
-            <MenuItem value="All">All</MenuItem>
-            <MenuItem value="Bank">Bank</MenuItem>
-            <MenuItem value="Mobile Money">Mobile Money</MenuItem>
-            <MenuItem value="Cash">Cash</MenuItem>
+            {accountTypes.map((type) => (
+              <MenuItem key={type} value={type}>
+                {type}
+              </MenuItem>
+            ))}
           </Select>
         </FormControl>
       </Box>
+      {isLoading && (
+        <Box
+          display="flex"
+          justifyContent="center"
+          alignItems="center"
+          height="40vh"
+        >
+          <CircularProgress />
+        </Box>
+      )}
 
       <div className={styles.cardBox}>
         {summaryCards.map((item, index) => (
@@ -173,7 +233,6 @@ const Dashboard: React.FC = () => {
           </Box>
         ))}
 
-        {/* Budget Card */}
         <Box sx={{ flex: "1 1 250px", minWidth: 0 }}>
           <Card>
             <StyledCardHeader>
@@ -185,7 +244,7 @@ const Dashboard: React.FC = () => {
             </StyledCardHeader>
             <CardContent>
               <BudgetTypography color={budgetColor}>
-                {remainingBudget.toFixed(2)} RWF
+                ${remainingBudget.toFixed(2)} RWF
               </BudgetTypography>
             </CardContent>
           </Card>
@@ -195,13 +254,13 @@ const Dashboard: React.FC = () => {
       <Card sx={{ maxWidth: "1214px", width: "100%", marginBottom: "16px" }}>
         <CardHeader>
           <CardTitle>
-            <div className=" text-2xl font-bold">Transaction Overview</div>
+            <div className="text-2xl font-bold">Transaction Overview</div>
           </CardTitle>
         </CardHeader>
         <CardContent>
           <LineChart
             dataset={lineChartData}
-            xAxis={[{ scaleType: "band", dataKey: "x", label: "Month" }]}
+            xAxis={[{ scaleType: "band", dataKey: "x", label: "Day" }]}
             series={[{ dataKey: "y", label: selectedAccount }]}
             height={300}
           />
@@ -211,10 +270,10 @@ const Dashboard: React.FC = () => {
       <Card sx={{ maxWidth: "1214px", width: "100%" }}>
         <CardHeader>
           <CardTitle>
-            <div className=" text-2xl font-bold">Recent Transactions</div>
+            <div className="text-2xl font-bold">Recent Transactions</div>
           </CardTitle>
         </CardHeader>
-        <div className=" w-full p-2">
+        <div className="w-full p-2">
           <Table columns={columns} rows={filteredRows} height={400} />
         </div>
       </Card>
