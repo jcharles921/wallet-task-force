@@ -20,8 +20,7 @@ app.use(
     },
   })
 );
-
-
+app.use(cors({ origin: "*" }));
 
 app.use(express.json());
 
@@ -33,12 +32,10 @@ app.get("/api/health", (_req, res) => {
   res.json({ status: "OK", timestamp: new Date().toISOString() });
 });
 
-
 // async function initializeDatabase() {
 //   try {
 //     console.log("Starting database initialization...");
 
-    
 //     await seedDatabase(pool);
 //     console.log("Database initialization completed");
 //   } catch (error) {
