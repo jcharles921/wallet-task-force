@@ -7,6 +7,7 @@ import { addCategoryReducer } from "./reducer/addCategorySlice";
 import { deleteCategoryReducer } from "./reducer/deleteCategorySlice";
 import { editCategoryReducer } from "./reducer/editCategorySlice";
 import { budgetReducer } from "./reducer/budgetSlice";
+import { notificationsReducer } from "./reducer/notificationsSlice";
 
 export const store = configureStore({
   reducer: {
@@ -18,6 +19,7 @@ export const store = configureStore({
     deleteCategory: deleteCategoryReducer,
     editCategory: editCategoryReducer,
     budget: budgetReducer,
+    notifications: notificationsReducer,
   },
 });
 

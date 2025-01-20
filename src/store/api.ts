@@ -14,9 +14,9 @@ interface CategoryInput {
   parent_id: number | null;
 }
 interface BudgetInput {
-    account_id: number;
-    spending_limit: number;
-  }
+  account_id: number;
+  spending_limit: number;
+}
 
 class Api {
   resetAll = createAction("resetAll");
@@ -45,15 +45,21 @@ class Api {
     "setBudget",
     async (data: BudgetInput, { rejectWithValue }) => {
       try {
-        const response = await fetch(`${endpoints.accountTypes}/${data.account_id}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            spending_limit: typeof data.spending_limit === "string" ? parseFloat(data.spending_limit) : data.spending_limit,
-          }),
-        });
+        const response = await fetch(
+          `${endpoints.accountTypes}/${data.account_id}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              spending_limit:
+                typeof data.spending_limit === "string"
+                  ? parseFloat(data.spending_limit)
+                  : data.spending_limit,
+            }),
+          }
+        );
 
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -115,13 +121,16 @@ class Api {
     "editCategory",
     async (data: CategoryInput, { rejectWithValue }) => {
       try {
-        const response = await fetch(`${endpoints.categories}/${data.parent_id}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(data),
-        });
+        const response = await fetch(
+          `${endpoints.categories}/${data.parent_id}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(data),
+          }
+        );
 
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -232,6 +241,47 @@ class Api {
         return transactionId; // Return the id of deleted transaction
       } catch (error: any) {
         return rejectWithValue({ error: error?.message });
+      }
+    }
+  );
+  fetchNotifications = createAsyncThunk(
+    "notifications/fetch",
+    async (_, { rejectWithValue }) => {
+      try {
+        const response = await fetch(`${endpoints.notfications}`);
+        if (!response.ok) {
+          throw new Error("Failed to fetch notifications");
+        }
+        const data = await response.json();
+        return data;
+      } catch (error: any) {
+        return rejectWithValue(
+          error.response?.data || { error: "Failed to fetch notifications" }
+        );
+      }
+    }
+  );
+  markNotificationAsRead = createAsyncThunk(
+    "notifications/markAsRead",
+    async (id: number, { rejectWithValue }) => {
+      try {
+        const response = await fetch(`${endpoints.notfications}/${id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+        if (!response.ok) {
+          throw new Error("Failed to mark notification as read");
+        }
+        const data = await response.json();
+        return data;
+      } catch (error: any) {
+        return rejectWithValue(
+          error.response?.data || {
+            error: "Failed to mark notification as read",
+          }
+        );
       }
     }
   );

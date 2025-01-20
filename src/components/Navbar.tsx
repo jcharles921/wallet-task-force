@@ -1,13 +1,32 @@
 import { useEffect, useState } from "react";
+import { useSelector, useDispatch } from "react-redux";
 import { useLocation, useNavigate } from "react-router-dom";
-import styles from "../styles/global.module.css";
+import { RootState, AppDispatch } from "../store";
+import apis from "../store/api";
+import {
+  Badge,
+  Menu,
+  MenuItem,
+  CircularProgress,
+  ListItemText,
+  Typography,
+  Divider,
+} from "@mui/material";
 import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
-import { Badge } from "@mui/material";
+import styles from "../styles/global.module.css";
 
 const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const dispatch = useDispatch<AppDispatch>();
   const [activeLink, setActiveLink] = useState("");
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+
+  const {
+    data: notifications,
+    unreadCount,
+    loading,
+  } = useSelector((state: RootState) => state.notifications);
 
   const links = [
     { name: "Dashboard", path: "/" },
@@ -19,10 +38,23 @@ const Navbar = () => {
 
   useEffect(() => {
     setActiveLink(location.pathname);
-  }, [location.pathname]);
+    dispatch(apis.fetchNotifications());
+  }, [location.pathname, dispatch]);
 
   const handleNavigation = (path: string) => {
     navigate(path);
+  };
+
+  const handleOpenNotifications = (event: any) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleCloseNotifications = () => {
+    setAnchorEl(null);
+  };
+
+  const handleMarkAsRead = (id: number) => {
+    dispatch(apis.markNotificationAsRead(id));
   };
 
   return (
@@ -42,9 +74,80 @@ const Navbar = () => {
         ))}
       </div>
       <div className={styles.notificationIcon}>
-        <Badge badgeContent={4} color="primary">
-          <NotificationsNoneOutlinedIcon />
+        <Badge badgeContent={unreadCount} color="primary">
+          <NotificationsNoneOutlinedIcon
+            onClick={handleOpenNotifications}
+            style={{ cursor: "pointer" }}
+          />
         </Badge>
+        <Menu
+          anchorEl={anchorEl}
+          open={Boolean(anchorEl)}
+          onClose={handleCloseNotifications}
+          PaperProps={{
+            style: { maxHeight: 300, width: "320px" },
+          }}
+        >
+          {loading ? (
+            <MenuItem>
+              <CircularProgress size={24} />
+            </MenuItem>
+          ) : notifications.length > 0 ? (
+            notifications.map((notification) => (
+              <MenuItem
+                key={notification.id}
+                onClick={() => handleMarkAsRead(notification.id)}
+                sx={{
+                  backgroundColor: notification.is_read
+                    ? "transparent"
+                    : "rgba(25, 118, 210, 0.08)",
+                  "&:hover": {
+                    backgroundColor: "rgba(25, 118, 210, 0.2)",
+                  },
+                }}
+              >
+                <ListItemText
+                  primary={
+                    <Typography
+                      variant="body2"
+                      noWrap
+                      sx={{
+                        fontWeight: notification.is_read ? "normal" : "bold",
+                      }}
+                    >
+                      {notification.message}
+                    </Typography>
+                  }
+                  secondary={
+                    <Typography
+                      variant="caption"
+                      sx={{ color: "text.secondary" }}
+                    >
+                      {new Date(notification.created_at).toLocaleString()}
+                    </Typography>
+                  }
+                />
+              </MenuItem>
+            ))
+          ) : (
+            <MenuItem>
+              <Typography variant="body2">No new notifications</Typography>
+            </MenuItem>
+          )}
+          <Divider />
+          {notifications.length > 0 && (
+            <MenuItem
+              onClick={() => {
+                // dispatch(apis.markNotificationAsRead());
+                handleCloseNotifications();
+              }}
+            >
+              <Typography variant="body2" color="primary">
+                Mark all as read
+              </Typography>
+            </MenuItem>
+          )}
+        </Menu>
       </div>
     </div>
   );

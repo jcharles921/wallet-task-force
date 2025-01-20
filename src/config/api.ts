@@ -11,5 +11,6 @@ interface ApiConfig {
   export const endpoints = {
     transactions: `${apiConfig.baseURL}/transactions`,
     accountTypes: `${apiConfig.baseURL}/accounts`,
-    categories: `${apiConfig.baseURL}/categories`
+    categories: `${apiConfig.baseURL}/categories`,
+    notfications: `${apiConfig.baseURL}/notifications`
   };

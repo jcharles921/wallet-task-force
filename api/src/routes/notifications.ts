@@ -25,7 +25,7 @@ router.get('/', async (req: Request, res: Response) => {
     const result = await pool.query<Notification>(query, params);
     res.json(result.rows);
   } catch (error) {
-    res.status(500).json({ error: (error as Error).message });
+    res.status(500).json({ error: (error as Error).message });  
   }
 });
 

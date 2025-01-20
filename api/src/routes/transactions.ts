@@ -35,51 +35,87 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
     }
 });
 
+
 router.post('/', async (req: Request, res: Response): Promise<void> => {
-    const client = await pool.connect();
-    try {
-        await client.query('BEGIN');
-        const { account_id, category_id, amount, type, description } = req.body;
+  const client = await pool.connect();
+  try {
+      await client.query('BEGIN');
+      const { account_id, category_id, amount, type, description } = req.body;
 
-        const accountResult = await client.query(`
-            SELECT a.*, COALESCE(SUM(CASE 
-                WHEN t.type = 'income' THEN t.amount 
-                WHEN t.type = 'expense' THEN -t.amount 
-                ELSE 0 END), 0) as current_balance
-            FROM accounts a
-            LEFT JOIN transactions t ON a.id = t.account_id
-            WHERE a.id = $1
-            GROUP BY a.id`,
-            [account_id]
-        );
+      // Get account details with current balance and spending history
+      const accountResult = await client.query(`
+          SELECT 
+              a.*,
+              COALESCE(SUM(CASE 
+                  WHEN t.type = 'income' THEN t.amount 
+                  WHEN t.type = 'expense' THEN -t.amount 
+                  ELSE 0 END), 0) as current_balance,
+              COALESCE(SUM(CASE 
+                  WHEN t.type = 'expense' AND t.date >= date_trunc('month', CURRENT_DATE)
+                  THEN t.amount 
+                  ELSE 0 END), 0) as current_month_spending
+          FROM accounts a
+          LEFT JOIN transactions t ON a.id = t.account_id
+          WHERE a.id = $1
+          GROUP BY a.id`,
+          [account_id]
+      );
 
-        const account = accountResult.rows[0];
-        if (type === 'expense') {
-            const newBalance = Number(account.current_balance) - Number(amount);
-            if (account.spending_limit && Math.abs(newBalance) > account.spending_limit) {
-                await client.query(
-                    `INSERT INTO notifications (account_id, message, type) 
-                     VALUES ($1, $2, 'limit_exceed')`,
-                    [account_id, `Spending limit exceeded for account ${account.name}`]
-                );
-            }
-        }
+      const account = accountResult.rows[0];
+      
+      // Insert the transaction
+      const result = await client.query<Transaction>(
+          `INSERT INTO transactions (account_id, category_id, amount, type, description)
+           VALUES ($1, $2, $3, $4, $5) 
+           RETURNING *`,
+          [account_id || null, category_id || null, amount, type, description || null]
+      );
 
-        const result = await client.query<Transaction>(
-            `INSERT INTO transactions (account_id, category_id, amount, type, description)
-             VALUES ($1, $2, $3, $4, $5) 
-             RETURNING *`,
-            [account_id || null, category_id || null, amount, type, description || null]
-        );
+      // Check spending limits and create notifications
+      if (type === 'expense' && account.spending_limit) {
+          const newMonthlySpending = Number(account.current_month_spending) + Number(amount);
+          const spendingLimitPercentage = (newMonthlySpending / account.spending_limit) * 100;
 
-        await client.query('COMMIT');
-        res.json(result.rows[0]);
-    } catch (error) {
-        await client.query('ROLLBACK');
-        res.status(500).json({ error: (error as Error).message });
-    } finally {
-        client.release();
-    }
+          // Create notifications based on spending thresholds
+          if (spendingLimitPercentage >= 100) {
+              await client.query(
+                  `INSERT INTO notifications (account_id, message, type) 
+                   VALUES ($1, $2, 'limit_exceed')`,
+                  [account_id, `Spending limit exceeded! Monthly spending (${newMonthlySpending.toFixed(2)}) is over your limit of ${account.spending_limit}`]
+              );
+          } else if (spendingLimitPercentage >= 90) {
+              await client.query(
+                  `INSERT INTO notifications (account_id, message, type) 
+                   VALUES ($1, $2, 'limit_exceed')`,
+                  [account_id, `Warning: You've used ${spendingLimitPercentage.toFixed(1)}% of your monthly spending limit`]
+              );
+          } else if (spendingLimitPercentage >= 75) {
+              await client.query(
+                  `INSERT INTO notifications (account_id, message, type) 
+                   VALUES ($1, $2, 'limit_exceed')`,
+                  [account_id, `Notice: You've used ${spendingLimitPercentage.toFixed(1)}% of your monthly spending limit`]
+              );
+          }
+
+          // Check for low balance
+          const newBalance = Number(account.current_balance) - Number(amount);
+          if (newBalance < 0) {
+              await client.query(
+                  `INSERT INTO notifications (account_id, message, type) 
+                   VALUES ($1, $2, 'low_balance')`,
+                  [account_id, `Warning: Account balance is negative (${newBalance.toFixed(2)})`]
+              );
+          }
+      }
+
+      await client.query('COMMIT');
+      res.json(result.rows[0]);
+  } catch (error) {
+      await client.query('ROLLBACK');
+      res.status(500).json({ error: (error as Error).message });
+  } finally {
+      client.release();
+  }
 });
 
 router.delete('/:id', async (req: Request, res: Response): Promise<void> => {
