@@ -19,8 +19,9 @@ import MenuItem from "@mui/material/MenuItem";
 import Select from "@mui/material/Select";
 import FormControl from "@mui/material/FormControl";
 import InputLabel from "@mui/material/InputLabel";
-import apis from "../../store/api"; // Import the API actions
-import { RootState, AppDispatch } from "../../store"; // Import RootState type
+import apis from "../../store/api"; 
+import { RootState, AppDispatch } from "../../store"; 
+import { calculateBudgetOverview } from "../../utils/calculate";
 
 const StyledCardHeader = styled(CardHeader)(({ theme }) => ({
   display: "flex",
@@ -39,11 +40,7 @@ const AmountTypography = styled(Typography)(({}) => ({
   fontWeight: 700,
 }));
 
-const BudgetTypography = styled(Typography)(({ color }) => ({
-  fontSize: "1.5rem",
-  fontWeight: 700,
-  color,
-}));
+
 
 const localTimeFormat = (date: Date | string): string =>
   new Date(date).toLocaleString();
@@ -85,106 +82,84 @@ const columns: GridColDef[] = [
 const Dashboard: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const [selectedAccount, setSelectedAccount] = useState<string>("All");
-  const budget: number = 1000; // Budget
 
-  // Replace useTransactions hook with Redux selectors
   const {
     data: transactions,
     loading: isLoading,
     error,
   } = useSelector((state: RootState) => state.transactions);
+  
+  const { data: accountTypes } = useSelector(
+    (state: RootState) => state.accountTypes
+  );
 
-  // Fetch transactions when component mounts
   useEffect(() => {
     dispatch(apis.transactions());
+    dispatch(apis.accountTypes());
   }, [dispatch]);
 
   const handleAccountChange = (event: any) => {
     setSelectedAccount(event.target.value as string);
   };
 
-  // Get unique account types from transactions
-  const accountTypes = useMemo(() => {
-    const types = new Set(transactions.map((t) => t.account_name));
-    return ["All", ...Array.from(types)];
-  }, [transactions]);
-
   const filteredRows = useMemo(
     () =>
       selectedAccount === "All"
         ? transactions
-        : transactions.filter((row) => row.account_name === selectedAccount),
+        : transactions.filter((row:any) => row.account_id === parseInt(selectedAccount)),
     [transactions, selectedAccount]
   );
 
+  // Use the new budget calculation
+  const budgetData = useMemo(() => 
+    calculateBudgetOverview(transactions, accountTypes, selectedAccount),
+    [transactions, accountTypes, selectedAccount]
+  );
+
   const lineChartData = useMemo(() => {
+   
+    let remainingBudget = budgetData.totalBudget;
     const dailyData: { [day: string]: number } = {};
 
-    filteredRows.forEach((transaction) => {
+    // Sort transactions by date
+    const sortedTransactions = [...filteredRows]
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    // Calculate remaining budget for each day
+    sortedTransactions.forEach((transaction) => {
       const date = new Date(transaction.date).toLocaleDateString();
       const amount = parseFloat(transaction.amount.toString());
-      const finalAmount = transaction.type === "expense" ? -amount : amount;
-      dailyData[date] = (dailyData[date] || 0) + finalAmount;
+      if (transaction.type === "expense") {
+        remainingBudget -= amount;
+      }
+      dailyData[date] = remainingBudget;
     });
 
-    const sortedDates = Object.keys(dailyData).sort(
-      (a, b) => new Date(a).getTime() - new Date(b).getTime()
-    );
+    return Object.entries(dailyData).map(([date, remaining]) => ({
+      x: date,
+      y: remaining,
+    }));
+  }, [filteredRows, budgetData.totalBudget]);
 
-    let cumulativeSum = 0;
-    return sortedDates.map((date) => {
-      cumulativeSum += dailyData[date];
-      return {
-        x: date,
-        y: cumulativeSum,
-      };
-    });
-  }, [filteredRows]);
-
-  const summaryCards = useMemo(() => {
-    const totalIncome = filteredRows
-      .filter((t) => t.type === "income")
-      .reduce((sum, t) => sum + parseFloat(t.amount.toString()), 0);
-
-    const totalExpenses = filteredRows
-      .filter((t) => t.type === "expense")
-      .reduce((sum, t) => sum + parseFloat(t.amount.toString()), 0);
-
-    const totalBalance = totalIncome - totalExpenses;
-
-    return [
-      {
-        title: "Total Balance",
-        amount: `$${totalBalance.toFixed(2)} RWF`,
-      },
-      {
-        title: "Total Income",
-        amount: `$${totalIncome.toFixed(2)} RWF`,
-      },
-      {
-        title: "Total Expenses",
-        amount: `$${totalExpenses.toFixed(2)} RWF`,
-      },
-    ];
-  }, [filteredRows]);
-
-  const totalExpenses = useMemo(() => {
-    return filteredRows
-      .filter((t) => t.type === "expense")
-      .reduce((sum, t) => sum + parseFloat(t.amount.toString()), 0);
-  }, [filteredRows]);
-
-  const remainingBudget = budget - totalExpenses;
-  const budgetColor = remainingBudget <= budget * 0.2 ? "red" : "green";
+  const summaryCards = useMemo(() => [
+    {
+      title: "Total Budget",
+      amount: `${budgetData.totalBudget.toFixed(2)} RWF`,
+    },
+    {
+      title: "Total Spent",
+      amount: `${budgetData.spent.toFixed(2)} RWF`,
+    },
+    {
+      title: "Remaining Budget",
+      amount: `${budgetData.remaining.toFixed(2)} RWF`,
+      color: budgetData.remaining <= budgetData.totalBudget * 0.2 ? "error.main" : "success.main",
+    }
+  ], [budgetData]);
 
   if (isLoading) {
     return (
-      <Box
-        display="flex"
-        justifyContent="center"
-        alignItems="center"
-        height="100vh"
-      >
+      <Box display="flex" justifyContent="center" alignItems="center" height="100vh">
         <CircularProgress />
       </Box>
     );
@@ -202,15 +177,16 @@ const Dashboard: React.FC = () => {
     <div className={styles.mainBox}>
       <Box sx={{ marginBottom: 3 }}>
         <FormControl sx={{ minWidth: 200 }}>
-          <InputLabel>Account Type</InputLabel>
+          <InputLabel>Account</InputLabel>
           <Select
             value={selectedAccount}
             onChange={handleAccountChange}
-            label="Account Type"
+            label="Account"
           >
-            {accountTypes.map((type) => (
-              <MenuItem key={type} value={type}>
-                {type}
+            <MenuItem value="All">All Accounts</MenuItem>
+            {accountTypes.map((account: any) => (
+              <MenuItem key={account.id} value={account.id}>
+                {account.name}
               </MenuItem>
             ))}
           </Select>
@@ -229,41 +205,34 @@ const Dashboard: React.FC = () => {
                 </CardTitle>
               </StyledCardHeader>
               <CardContent>
-                <AmountTypography>{item.amount}</AmountTypography>
+                <AmountTypography sx={{ color: item.color }}>
+                  {item.amount}
+                </AmountTypography>
               </CardContent>
             </Card>
           </Box>
         ))}
-
-        <Box sx={{ flex: "1 1 250px", minWidth: 0 }}>
-          <Card>
-            <StyledCardHeader>
-              <CardTitle>
-                <Typography variant="body2" fontWeight="medium">
-                  Remaining Budget
-                </Typography>
-              </CardTitle>
-            </StyledCardHeader>
-            <CardContent>
-              <BudgetTypography color={budgetColor}>
-                ${remainingBudget.toFixed(2)} RWF
-              </BudgetTypography>
-            </CardContent>
-          </Card>
-        </Box>
       </div>
 
       <Card sx={{ maxWidth: "1214px", width: "100%", marginBottom: "16px" }}>
         <CardHeader>
           <CardTitle>
-            <div className="text-2xl font-bold">Transaction Overview</div>
+            <div className="text-2xl font-bold">Budget Overview</div>
           </CardTitle>
         </CardHeader>
         <CardContent>
           <LineChart
             dataset={lineChartData}
-            xAxis={[{ scaleType: "band", dataKey: "x", label: "Day" }]}
-            series={[{ dataKey: "y", label: selectedAccount }]}
+            xAxis={[{ 
+              scaleType: "band", 
+              dataKey: "x", 
+              label: "Date"
+            }]}
+            series={[{ 
+              dataKey: "y", 
+              label: "Remaining Budget",
+              color: "#014E7A"
+            }]}
             height={300}
           />
         </CardContent>
